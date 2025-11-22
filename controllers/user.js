@@ -22,15 +22,28 @@ const getAccessToken = async (code) => {
 };
 
 const getUserData = async (accessToken) => {
-    const response = await axios.get("https://api.linkedin.com/v2/userinfo", {
+    const profileRes = await axios.get("https://api.linkedin.com/v2/me", {
         headers: { Authorization: `Bearer ${accessToken}` },
     });
-    return response.data;
+    const emailRes = await axios.get(
+        "https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))",
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+
+    const email = emailRes?.data?.elements?.[0]?.["handle~"]?.emailAddress;
+    const name = `${profileRes?.data?.localizedFirstName || ""} ${profileRes?.data?.localizedLastName || ""}`.trim();
+    const picture = undefined;
+
+    return { email, name, picture };
 };
 
 const linkedInCallback = async (req, res) => {
     try {
-        const { code } = req.query; // Get code from query params
+        const { code, error, error_description } = req.query;
+        if (error) {
+            const base = (process.env.FRONTEND_BASE_URL || "").replace(/\/$/, "");
+            return res.redirect(`${base}/login?error=${encodeURIComponent(error)}&error_description=${encodeURIComponent(error_description || "")}`);
+        }
         
         if (!code) {
             return res.status(400).json({
