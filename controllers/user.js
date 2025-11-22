@@ -22,19 +22,10 @@ const getAccessToken = async (code) => {
 };
 
 const getUserData = async (accessToken) => {
-    const profileRes = await axios.get("https://api.linkedin.com/v2/me", {
+    const response = await axios.get("https://api.linkedin.com/v2/userinfo", {
         headers: { Authorization: `Bearer ${accessToken}` },
     });
-    const emailRes = await axios.get(
-        "https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))",
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-    );
-
-    const email = emailRes?.data?.elements?.[0]?.["handle~"]?.emailAddress;
-    const name = `${profileRes?.data?.localizedFirstName || ""} ${profileRes?.data?.localizedLastName || ""}`.trim();
-    const picture = undefined;
-
-    return { email, name, picture };
+    return response.data;
 };
 
 const linkedInCallback = async (req, res) => {
