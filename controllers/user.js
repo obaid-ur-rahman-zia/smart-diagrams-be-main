@@ -1,49 +1,31 @@
 const User = require("../models/user");
 const jwt = require("jsonwebtoken");
-const fetch = require("node-fetch");
+const axios = require("axios");
 const { generateToken } = require("../auth/jwt");
 
 const getAccessToken = async (code) => {
     const body = new URLSearchParams({
         grant_type: "authorization_code",
-        code: code,
+        code,
         client_id: process.env.LINKEDIN_CLIENT_ID,
         client_secret: process.env.LINKEDIN_CLIENT_SECRET,
-        redirect_uri: process.env.REDIRECT_URL, // Must match exactly
+        redirect_uri: process.env.REDIRECT_URL,
     });
 
-    const response = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: body.toString(),
-    });
+    const response = await axios.post(
+        "https://www.linkedin.com/oauth/v2/accessToken",
+        body.toString(),
+        { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+    );
 
-    if (!response.ok) {
-        const errorText = await response.text();
-        console.error('LinkedIn token error:', errorText);
-        throw new Error(`LinkedIn token request failed: ${response.status}`);
-    }
-
-    return await response.json();
+    return response.data;
 };
 
 const getUserData = async (accessToken) => {
-    const response = await fetch("https://api.linkedin.com/v2/userinfo", {
-        method: "GET",
-        headers: {
-            Authorization: `Bearer ${accessToken}`,
-        },
+    const response = await axios.get("https://api.linkedin.com/v2/userinfo", {
+        headers: { Authorization: `Bearer ${accessToken}` },
     });
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        console.error('LinkedIn user data error:', errorText);
-        throw new Error(`Failed to fetch user data: ${response.status}`);
-    }
-
-    return await response.json();
+    return response.data;
 };
 
 const linkedInCallback = async (req, res) => {
@@ -107,13 +89,13 @@ const linkedInCallback = async (req, res) => {
             maxAge: 24 * 60 * 60 * 1000 // 24 hours
         });
 
-        // Redirect to frontend with token in URL (for fallback)
-        res.redirect(`https://smart-diagram.vercel.app/dashboard?token=${token}`);
+        const base = (process.env.FRONTEND_BASE_URL || "").replace(/\/$/, "");
+        res.redirect(`${base}/dashboard?token=${token}`);
 
     } catch (error) {
         console.error('LinkedIn callback error:', error);
-        // Redirect to login page with error
-        res.redirect('https://smart-diagram.vercel.app/login?error=auth_failed');
+        const base = (process.env.FRONTEND_BASE_URL || "").replace(/\/$/, "");
+        res.redirect(`${base}/login?error=auth_failed`);
     }
 };
 
@@ -128,7 +110,7 @@ const getUser = async (req, res) => {
     }
 
     try {
-        const user = jwt.verify(token, process.env.JWT_SECRET);
+        const user = jwt.verify(token, process.env.JWT_SECRET_KEY);
         res.status(200).json({
             success: true,
             user,

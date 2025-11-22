@@ -19,7 +19,7 @@ connectionDB(process.env.DB_CONNECTION_STRING);
 //Middlewares
 app.use(
     cors({
-        origin: "https://smart-diagram.vercel.app",
+        origin: process.env.FRONTEND_BASE_URL,
         credentials: true,
     })
 );
