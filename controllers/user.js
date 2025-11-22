@@ -9,7 +9,7 @@ const getAccessToken = async (code) => {
         code: code,
         client_id: process.env.LINKEDIN_CLIENT_ID,
         client_secret: process.env.LINKEDIN_CLIENT_SECRET,
-        redirect_uri: "https://smart-diagrams-be.onrender.com/api/linkedin/callback", // Must match exactly
+        redirect_uri: "https://smart-diagrams-be-main.onrender.com/api/linkedin/callback", // Must match exactly
     });
 
     const response = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
