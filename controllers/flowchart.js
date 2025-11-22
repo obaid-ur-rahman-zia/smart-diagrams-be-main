@@ -551,23 +551,38 @@ const handleCreateFlowChart = asyncHandler(async (req, res) => {
       return res.status(400).json({ message: "No input provided." });
     }
 
-    // Get appropriate system prompt
-    const systemPrompt = getSystemPrompt(diagramType);
-    
-    let generatedText;
-    
-    // Route to appropriate AI model
-    if (aiModel === 'Open AI') {
-      generatedText = await generateDiagramWithOpenAI(textData, diagramType, systemPrompt);
+    // If user provided Mermaid code, bypass AI and save corrected code
+    const trimmed = (textData || "").trim().toLowerCase();
+    const isMermaid = [
+      'flowchart', 'graph', 'sequencediagram', 'erdiagram',
+      'requirementdiagram', 'architecture-beta', 'block-beta', 'journey'
+    ].some(prefix => trimmed.startsWith(prefix));
+
+    let mermaidChart;
+
+    if (isMermaid) {
+      mermaidChart = cleanMermaidChart(textData, diagramType);
     } else {
-      // Default to DeepSeek
-      generatedText = await generateDiagramWithDeepSeek(textData, diagramType, systemPrompt);
+      const systemPrompt = getSystemPrompt(diagramType);
+      const prefersOpenAI = aiModel === 'Open AI';
+      const hasOpenAI = !!process.env.OPENAI_API_KEY;
+      const hasDeepSeek = !!process.env.DEEPSEEK_API_KEY;
+
+      let generatedText = null;
+      try {
+        if (prefersOpenAI && hasOpenAI) {
+          generatedText = await generateDiagramWithOpenAI(textData, diagramType, systemPrompt);
+        } else if (!prefersOpenAI && hasDeepSeek) {
+          generatedText = await generateDiagramWithDeepSeek(textData, diagramType, systemPrompt);
+        }
+      } catch (e) {
+        console.error('AI generation failed:', e.message);
+      }
+
+      mermaidChart = generatedText
+        ? cleanMermaidChart(generatedText, diagramType)
+        : `${getDefaultDiagramSyntax(diagramType)}\n    A[Start]`;
     }
-
-    console.log("Generated text:", generatedText);
-
-    // Clean and extract MermaidJS code
-    const mermaidChart = cleanMermaidChart(generatedText, diagramType);
 
     // Create and save flowchart/diagram
     const flowChart = new FlowChart({
