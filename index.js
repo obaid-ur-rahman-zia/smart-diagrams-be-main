@@ -17,12 +17,21 @@ const flowChartRouter = require("./routes/flowchart");
 connectionDB(process.env.DB_CONNECTION_STRING);
 
 //Middlewares
-app.use(
-    cors({
-        origin: process.env.FRONTEND_BASE_URL,
-        credentials: true,
-    })
-);
+const normalizeOrigin = (o) => (o || '').replace(/\/$/, '');
+const allowedOrigins = [normalizeOrigin(process.env.FRONTEND_BASE_URL), 'http://localhost:3000'];
+const corsOptions = {
+    origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        const n = normalizeOrigin(origin);
+        if (allowedOrigins.includes(n)) return callback(null, true);
+        return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+    methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+    allowedHeaders: ['Content-Type','token']
+};
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 app.use(express.json());
 app.use(cookieParser());
